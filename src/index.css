@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root{
+  --uan-blue: #003B7A;
+  --uan-gold: #C9A227;
+  --uan-dark: #0F172A;
+}
+
+body{
+  margin:0;
+  padding:0;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color:white;
+}
