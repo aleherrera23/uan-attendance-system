@@ -6,37 +6,25 @@ export default function ScanQR() {
   const [manualCode, setManualCode] = useState("");
   const [student, setStudent] = useState({ name: "", email: "" });
   const [status, setStatus] = useState("");
-
   const [loading, setLoading] = useState(false);
 
-  // 📍 obtener ubicación obligatoria
-  const getLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject("Geolocalización no soportada");
-        return;
-      }
+  // 📍 ubicación
+  const getLocation = () =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject("No soportado");
 
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        (pos) =>
           resolve({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-          });
-        },
-        (err) => {
-          reject(err);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
+          }),
+        reject,
+        { enableHighAccuracy: true }
       );
     });
-  };
 
-  // 📏 distancia (Haversine)
+  // 📏 distancia
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -53,17 +41,19 @@ export default function ScanQR() {
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // 🚨 validar + registrar asistencia
+  // 🚨 procesar asistencia
   const processCode = async (code) => {
+    if (!code) return;
+
     if (!student.name || !student.email) {
-      alert("Completa nombre y correo");
+      alert("Completa datos del estudiante");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 🔎 buscar sesión
+      // 🔎 sesión
       const { data: session } = await supabase
         .from("attendance_sessions")
         .select("*")
@@ -76,10 +66,8 @@ export default function ScanQR() {
         return;
       }
 
-      // 📍 ubicación obligatoria
       const location = await getLocation();
 
-      // 📏 distancia
       const distance = calculateDistance(
         session.latitude,
         session.longitude,
@@ -87,28 +75,28 @@ export default function ScanQR() {
         location.lng
       );
 
-      let statusValue =
+      const statusValue =
         distance < 100
           ? "valido"
           : distance <= 300
           ? "sospechoso"
           : "fuera";
 
-      // 🚫 VALIDAR SI YA REGISTRADO
+      // 🚫 ANTI DUPLICADO (MEJORADO)
       const { data: existing } = await supabase
         .from("attendance_records")
-        .select("*")
+        .select("id")
         .eq("session_code", code)
         .eq("student_email", student.email)
-        .single();
+        .maybeSingle();
 
       if (existing) {
-        alert("Ya registraste tu asistencia en esta sesión");
+        alert("Ya registraste esta asistencia");
         setLoading(false);
         return;
       }
 
-      // 💾 guardar asistencia
+      // 💾 guardar
       const { error } = await supabase
         .from("attendance_records")
         .insert({
@@ -129,17 +117,17 @@ export default function ScanQR() {
       }
 
       setStatus(statusValue);
-      alert("Asistencia registrada correctamente");
+      alert("Asistencia registrada");
 
     } catch (err) {
       console.error(err);
-      alert("Error en el proceso de asistencia");
+      alert("Error en el proceso");
     }
 
     setLoading(false);
   };
 
-  // 📷 escáner QR
+  // 📷 scanner
   useEffect(() => {
     const scanner = new Html5QrcodeScanner("reader", {
       fps: 10,
@@ -162,11 +150,10 @@ export default function ScanQR() {
   return (
     <div className="max-w-xl mx-auto space-y-4">
 
-      <h1 className="text-2xl font-bold">
-        Escanear o ingresar código
+      <h1 className="text-xl font-bold">
+        Escanear / Código manual
       </h1>
 
-      {/* DATOS ESTUDIANTE */}
       <input
         placeholder="Nombre"
         className="border p-2 w-full"
@@ -183,26 +170,23 @@ export default function ScanQR() {
         }
       />
 
-      {/* CÓDIGO MANUAL */}
       <input
-        placeholder="Ingresar código manual"
+        placeholder="Código manual"
         className="border p-2 w-full"
         value={manualCode}
         onChange={(e) => setManualCode(e.target.value)}
       />
 
       <button
-        className="bg-uanBlue text-white w-full p-2 hover:bg-blue-900"
-        disabled={loading}
+        className="bg-uanBlue text-white w-full p-2"
         onClick={() => processCode(manualCode)}
+        disabled={loading}
       >
-        {loading ? "Validando..." : "Validar código manual"}
+        {loading ? "Validando..." : "Validar"}
       </button>
 
-      {/* ESCÁNER */}
       <div id="reader"></div>
 
-      {/* ESTADO */}
       {status && (
         <p className="text-center font-bold">
           Estado: {status}

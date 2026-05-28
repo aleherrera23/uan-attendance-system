@@ -14,12 +14,12 @@ export default function CreateQR() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingQR, setLoadingQR] = useState(false);
 
-  // 📍 obtener ubicación (robusto)
+  // 📍 ubicación
   const getLocation = () => {
     setLoadingLocation(true);
 
     if (!navigator.geolocation) {
-      alert("Tu navegador no soporta geolocalización");
+      alert("Geolocalización no soportada");
       setLoadingLocation(false);
       return;
     }
@@ -32,8 +32,7 @@ export default function CreateQR() {
         });
         setLoadingLocation(false);
       },
-      (error) => {
-        console.error(error);
+      () => {
         alert("Activa permisos de ubicación");
         setLoadingLocation(false);
       },
@@ -57,7 +56,7 @@ export default function CreateQR() {
     document.body.removeChild(link);
   };
 
-  // 🚀 generar QR + guardar sesión
+  // 🚀 generar QR
   const generateQR = async () => {
     if (!title || !startTime || !endTime) {
       alert("Completa todos los campos");
@@ -65,21 +64,20 @@ export default function CreateQR() {
     }
 
     if (!location) {
-      alert("Primero registra tu ubicación");
+      alert("Debes registrar tu ubicación");
       return;
     }
 
     setLoadingQR(true);
 
     try {
-      // 🔑 código único
       const randomCode =
         Date.now().toString(36) +
         Math.random().toString(36).substring(2, 6);
 
       setCode(randomCode);
 
-      // 📦 guardar en Supabase
+      // 📦 sesión
       const sessionData = {
         title,
         code: randomCode,
@@ -101,15 +99,20 @@ export default function CreateQR() {
         return;
       }
 
-      // 📱 QR payload liviano
+      // 📱 QR payload
       const qrPayload = {
         code: randomCode,
         title,
       };
 
       const qr = await QRCode.toDataURL(JSON.stringify(qrPayload));
-
       setQrUrl(qr);
+
+      // 💾 guardar QR en DB
+      await supabase
+        .from("attendance_sessions")
+        .update({ qr_data: qr })
+        .eq("code", randomCode);
 
     } catch (err) {
       console.error(err);
@@ -126,14 +129,12 @@ export default function CreateQR() {
         Crear Asistencia QR
       </h1>
 
-      {/* TITULO */}
       <input
         className="w-full border p-2"
         placeholder="Nombre de la clase"
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      {/* HORARIOS */}
       <input
         type="datetime-local"
         className="w-full border p-2"
@@ -146,56 +147,42 @@ export default function CreateQR() {
         onChange={(e) => setEndTime(e.target.value)}
       />
 
-      {/* UBICACIÓN */}
       <button
         onClick={getLocation}
         disabled={loadingLocation}
-        className="bg-gray-200 p-2 w-full hover:bg-gray-300"
+        className="bg-gray-200 p-2 w-full"
       >
-        {loadingLocation
-          ? "Obteniendo ubicación..."
-          : "Registrar mi ubicación"}
+        {loadingLocation ? "Obteniendo ubicación..." : "Registrar ubicación"}
       </button>
 
       {location && (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm">
           📍 {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
         </p>
       )}
 
-      {/* GENERAR */}
       <button
         onClick={generateQR}
         disabled={loadingQR}
-        className="bg-uanBlue text-white p-2 w-full hover:bg-blue-900"
+        className="bg-uanBlue text-white p-2 w-full"
       >
-        {loadingQR ? "Generando QR..." : "Generar QR"}
+        {loadingQR ? "Generando..." : "Generar QR"}
       </button>
 
-      {/* CÓDIGO */}
-      {code && (
-        <p className="text-sm">
-          Código: <strong>{code}</strong>
-        </p>
-      )}
+      {code && <p>Código: <b>{code}</b></p>}
 
-      {/* QR */}
       {qrUrl && (
         <div className="flex flex-col items-center space-y-2">
-
           <img src={qrUrl} className="w-48" />
 
-          {/* DESCARGAR */}
           <button
             onClick={downloadQR}
-            className="bg-green-600 text-white p-2 w-full hover:bg-green-700"
+            className="bg-green-600 text-white p-2 w-full"
           >
             Descargar QR
           </button>
-
         </div>
       )}
-
     </div>
   );
 }

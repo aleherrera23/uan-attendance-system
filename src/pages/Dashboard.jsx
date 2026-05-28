@@ -32,6 +32,13 @@ export default function Dashboard() {
   const countStatus = (status) =>
     records.filter((r) => r.status === status).length;
 
+  // 🎯 filtrar registros por sesión seleccionada
+  const sessionRecords = selectedSession
+    ? records.filter(
+        (r) => r.session_code === selectedSession.code
+      )
+    : [];
+
   if (loading) {
     return (
       <div className="p-10 text-center text-gray-500">
@@ -47,7 +54,7 @@ export default function Dashboard() {
         Dashboard de Asistencia
       </h1>
 
-      {/* ESTADÍSTICAS */}
+      {/* 📊 ESTADÍSTICAS */}
       <div className="grid grid-cols-3 gap-4">
 
         <div className="p-4 bg-green-100 rounded">
@@ -69,7 +76,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-6">
 
-        {/* SESIONES */}
+        {/* 📚 SESIONES */}
         <div>
           <h2 className="text-xl font-semibold mt-6">
             Sesiones creadas
@@ -91,7 +98,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* DETALLE */}
+        {/* 📌 DETALLE SESIÓN */}
         <div>
           <h2 className="text-xl font-semibold mt-6">
             Detalle sesión
@@ -99,21 +106,77 @@ export default function Dashboard() {
 
           {selectedSession ? (
             <div className="p-4 border rounded space-y-2">
-              <p><strong>Clase:</strong> {selectedSession.title}</p>
-              <p><strong>Código:</strong> {selectedSession.code}</p>
+
+              <p>
+                <strong>Clase:</strong> {selectedSession.title}
+              </p>
+
+              <p>
+                <strong>Código:</strong> {selectedSession.code}
+              </p>
+
               <p className="text-sm text-gray-500">
                 Inicio: {selectedSession.start_time || "N/A"}
               </p>
+
               <p className="text-sm text-gray-500">
                 Fin: {selectedSession.end_time || "N/A"}
               </p>
 
+              {/* 🎯 QR */}
               {selectedSession.qr_data && (
                 <img
                   src={selectedSession.qr_data}
-                  className="w-48"
+                  className="w-48 border rounded"
                 />
               )}
+
+              {/* 👥 ESTUDIANTES DE ESA CLASE */}
+              <div className="mt-4">
+                <h3 className="font-semibold">
+                  Estudiantes registrados
+                </h3>
+
+                {sessionRecords.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    No hay registros aún
+                  </p>
+                ) : (
+                  sessionRecords.map((r) => (
+                    <div
+                      key={r.id}
+                      className="mt-2 p-2 border rounded"
+                    >
+                      <p className="font-bold">
+                        {r.student_name}
+                      </p>
+                      <p className="text-sm">
+                        {r.student_email}
+                      </p>
+
+                      <p className="text-sm">
+                        Distancia:{" "}
+                        {r.distance_meters?.toFixed(2)} m
+                      </p>
+
+                      <p className="text-sm">
+                        Estado:{" "}
+                        <span
+                          className={
+                            r.status === "valido"
+                              ? "text-green-600"
+                              : r.status === "sospechoso"
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {r.status}
+                        </span>
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           ) : (
             <p className="text-gray-500">
@@ -124,7 +187,7 @@ export default function Dashboard() {
 
       </div>
 
-      {/* REGISTROS */}
+      {/* 📋 ÚLTIMAS ASISTENCIAS */}
       <div>
         <h2 className="text-xl font-semibold mt-6">
           Últimas asistencias
@@ -133,11 +196,26 @@ export default function Dashboard() {
         <div className="space-y-2 mt-2">
           {records.slice(0, 10).map((r) => (
             <div key={r.id} className="p-3 border rounded">
-              <p className="font-bold">{r.student_name}</p>
+
+              <p className="font-bold">
+                {r.student_name}
+              </p>
+
               <p className="text-sm">{r.student_email}</p>
+
+              <p className="text-sm">
+                Clase:{" "}
+                <span className="font-semibold">
+                  {sessions.find(
+                    (s) => s.code === r.session_code
+                  )?.title || "Desconocida"}
+                </span>
+              </p>
+
               <p className="text-sm">
                 Distancia: {r.distance_meters?.toFixed(2)} m
               </p>
+
               <p className="text-sm">
                 Estado:{" "}
                 <span
@@ -152,10 +230,10 @@ export default function Dashboard() {
                   {r.status}
                 </span>
               </p>
+
             </div>
           ))}
         </div>
-
       </div>
 
     </div>
